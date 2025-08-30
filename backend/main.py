@@ -294,8 +294,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.mount("/static", StaticFiles(directory="../frontend"), name="static")
-app.mount("/frontend_static", StaticFiles(directory="../frontend"), name="frontend_static")
+app.mount("/static", StaticFiles(directory="frontend"), name="static")
+app.mount("/frontend_static", StaticFiles(directory="frontend"), name="frontend_static")
 
 @app.get("/")
 def serve_home():
@@ -944,12 +944,43 @@ def debug_search_api():
         "search_engine_id_value": SEARCH_ENGINE_ID if SEARCH_ENGINE_ID else "None"
     }
 
+from pydantic import BaseModel
+
+class ConfigBody(BaseModel):
+    MURF_API_KEY: str = None
+    ASSEMBLYAI_API_KEY: str = None
+    GEMINI_API_KEY: str = None
+    WEATHER_KEY: str = None
+    SEARCH_API_KEY: str = None
+    SEARCH_ENGINE_ID: str = None
+
+@app.post("/config")
+def update_config(config: ConfigBody):
+    global MURF_API_KEY, GEMINI_API_KEY, WEATHER_KEY, SEARCH_API_KEY, SEARCH_ENGINE_ID
+    global aai
+
+    if config.MURF_API_KEY:
+        MURF_API_KEY = config.MURF_API_KEY
+    if config.ASSEMBLYAI_API_KEY:
+        aai.settings.api_key = config.ASSEMBLYAI_API_KEY
+    if config.GEMINI_API_KEY:
+        GEMINI_API_KEY = config.GEMINI_API_KEY
+        genai.configure(api_key=GEMINI_API_KEY)
+    if config.WEATHER_KEY:
+        WEATHER_KEY = config.WEATHER_KEY
+    if config.SEARCH_API_KEY:
+        SEARCH_API_KEY = config.SEARCH_API_KEY
+    if config.SEARCH_ENGINE_ID:
+        SEARCH_ENGINE_ID = config.SEARCH_ENGINE_ID
+
+    return {"status": "ok", "message": "API keys updated successfully"}
+
+
 if __name__ == "__main__":
-    print("ðŸš€ Enhanced AI Voice Agent with Weather, Web Search & News is running!")
-    print("ðŸ’¡ Skills available:")
-    print("  - ðŸŒ¤ï¸  Weather: Ask about weather in any city")
-    print("  - ðŸ” Web Search: Ask about current events or facts")
-    print("  - ðŸ“° News: Ask for latest news or news on specific topics")
+    print("🛠️ Enhanced AI Voice Agent with Weather, Web Search & News is running!")
+    print("🔧 Skills available:")
+    print("  - 🌦️  Weather: Ask about weather in any city")
+    print("  - 🔍 Web Search: Ask about current events or facts")
+    print("  - 📰 News: Ask for latest news or news on specific topics")
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
-
