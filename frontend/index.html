@@ -318,42 +318,29 @@
       try {
         const config = JSON.parse(localStorage.getItem("voiceAgentConfig")) || {};
         const params = new URLSearchParams({ session_id: SESSION_ID, ...config });
-        wsStream = new WebSocket("wss://murf-ai-voice4.onrender.com/ws/stream-transcribe?session_id=" + sessionId);
-
-
+        wsStream = new WebSocket("wss://murf-ai-voice4.onrender.com/ws/stream-transcribe?" + params.toString());
         wsStream.onopen = () => {
           console.log("Connected to /ws/stream-transcribe");
           addAudioLog("Started recording session");
         };
-        
         wsStream.onerror = (error) => {
           console.error("Transcription WebSocket error:", error);
           addAudioLog("Transcription error");
         };
-        
         wsStream.onmessage = (event) => {
           const msg = event.data;
           console.log("Received:", msg);
-          
           if (msg.startsWith("PARTIAL::")) {
             document.getElementById("liveText").textContent = msg.slice(9);
           } else if (msg.startsWith("FINAL::")) {
             const finalText = msg.slice(7);
             document.getElementById("liveText").textContent = "AI is responding...";
-            
-            // Add user message to conversation history
             addToConversationHistory("You", finalText);
-            
-            // Reset AI response for new response
             resetAudioState();
-            
-            // Show typing indicator
             document.getElementById("typingIndicator").style.display = "block";
             document.getElementById("llmResponse").innerHTML = "";
-            
             addAudioLog(`Transcription: "${finalText}"`);
             addAudioLog("Generating AI response...");
-            
           } else if (msg.startsWith("ERROR::")) {
             const error = msg.slice(7);
             console.error("Transcription error:", error);
@@ -370,27 +357,30 @@
             noiseSuppression: true
           }
         });
-        
         input = audioContext.createMediaStreamSource(stream);
         processor = audioContext.createScriptProcessor(4096, 1, 1);
-        
         input.connect(processor);
         processor.connect(audioContext.destination);
-        
         processor.onaudioprocess = (e) => {
           if (wsStream.readyState !== WebSocket.OPEN) return;
-          
           const inputData = e.inputBuffer.getChannelData(0);
           const pcm16 = new Int16Array(inputData.length);
-          
           for (let i = 0; i < inputData.length; i++) {
             let s = Math.max(-1, Math.min(1, inputData[i]));
             pcm16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
           }
-          
           wsStream.send(pcm16.buffer);
         };
 
+        document.getElementById("startBtn").disabled = true;
+        document.getElementById("stopBtn").disabled = false;
+        document.getElementById("liveText").textContent = "Listening...";
+      } catch (error) {
+        console.error("Failed to start recording:", error);
+        alert("Failed to start recording. Please check microphone permissions.");
+        addAudioLog("Failed to start recording");
+      }
+    };
         document.getElementById("startBtn").disabled = true;
         document.getElementById("stopBtn").disabled = false;
         document.getElementById("liveText").textContent = "Listening...";
