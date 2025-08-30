@@ -203,7 +203,7 @@
 
     function connectAudioWebSocket() {
       try {
-        audioWebSocket = new WebSocket("ws://127.0.0.1:8000/ws/murf-audio");
+  audioWebSocket = new WebSocket("wss://murf-ai-voice4.onrender.com/ws/murf-audio");
         
         audioWebSocket.onopen = () => {
           console.log("Connected to /ws/murf-audio");
