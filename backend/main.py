@@ -299,7 +299,7 @@ app.mount("/frontend_static", StaticFiles(directory="frontend"), name="frontend_
 
 @app.get("/")
 def serve_home():
-    return FileResponse("../frontend/index.html")
+    return FileResponse("frontend/index.html")
 
 # --- UTILITY FUNCTIONS ---
 async def broadcast_murf_audio(b64: str):
