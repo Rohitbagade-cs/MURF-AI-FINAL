@@ -104,6 +104,17 @@
       <button id="enableAudioBtn">Enable Audio</button>
     </div>
     <div class="content">
+        <div class="config-section" style="padding:1.5rem; background:#f8fafc; border-radius:15px; margin-bottom:1.5rem;">
+            <div class="section-title">🔑 API Configuration</div>
+            <input id="murfKey" placeholder="Enter Murf API Key" style="width:100%; padding:0.6rem; margin-bottom:0.5rem;">
+            <input id="assemblyKey" placeholder="Enter AssemblyAI Key" style="width:100%; padding:0.6rem; margin-bottom:0.5rem;">
+            <input id="geminiKey" placeholder="Enter Gemini API Key" style="width:100%; padding:0.6rem; margin-bottom:0.5rem;">
+            <input id="weatherKey" placeholder="Enter OpenWeather Key" style="width:100%; padding:0.6rem; margin-bottom:0.5rem;">
+            <input id="searchKey" placeholder="Enter Google Search API Key" style="width:100%; padding:0.6rem; margin-bottom:0.5rem;">
+            <input id="searchEngine" placeholder="Enter Search Engine ID" style="width:100%; padding:0.6rem; margin-bottom:0.5rem;">
+            <button id="saveConfigBtn" style="background:#10b981; color:white; width:100%;">Save Configuration</button>
+        </div>
+
       <div class="live-section">
         <div class="section-title">Live Transcription:</div>
         <div id="liveText">Ready to start listening...</div>
@@ -305,7 +316,10 @@
     // Start Recording + Stream to backend
     document.getElementById("startBtn").onclick = async () => {
       try {
-        wsStream = new WebSocket(`ws://localhost:8000/ws/stream-transcribe?session_id=${SESSION_ID}`);
+        const config = JSON.parse(localStorage.getItem("voiceAgentConfig")) || {};
+        const params = new URLSearchParams({ session_id: SESSION_ID, ...config });
+        wsStream = new WebSocket(`ws://localhost:8000/ws/stream-transcribe?${params.toString()}`);
+
         
         wsStream.onopen = () => {
           console.log("Connected to /ws/stream-transcribe");
@@ -488,11 +502,16 @@
       const persona_id = document.getElementById("personaSelect").value;
       
       try {
+        const config = JSON.parse(localStorage.getItem("voiceAgentConfig")) || {};
         const response = await fetch(`http://localhost:8000/agent/persona/${SESSION_ID}`, {
-          method: "POST",
-          headers: {"Content-Type": "application/json"},
-          body: JSON.stringify({ persona_id })
-        });
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({
+                persona_id,
+                ...config   // include API keys
+            })
+            });
+
         
         if (response.ok) {
           addAudioLog(`Persona set to: ${persona_id}`);
@@ -515,6 +534,47 @@
     });
 
     connectAudioWebSocket();
+
+document.getElementById("saveConfigBtn").onclick = async () => {
+  const payload = {
+    MURF_API_KEY: document.getElementById("murfKey").value,
+    ASSEMBLYAI_API_KEY: document.getElementById("assemblyKey").value,
+    GEMINI_API_KEY: document.getElementById("geminiKey").value,
+    WEATHER_KEY: document.getElementById("weatherKey").value,
+    SEARCH_API_KEY: document.getElementById("searchKey").value,
+    SEARCH_ENGINE_ID: document.getElementById("searchEngine").value
+  };
+  // ✅ check if at least one key is filled
+  if (!payload.MURF_API_KEY && !payload.ASSEMBLYAI_API_KEY && !payload.GEMINI_API_KEY && 
+      !payload.WEATHER_KEY && !payload.SEARCH_API_KEY && !payload.SEARCH_ENGINE_ID) {
+    alert("⚠️ Please enter at least one API key before saving!");
+    return;
+  }
+
+  // Save to localStorage
+  localStorage.setItem("voiceAgentConfig", JSON.stringify(payload));
+
+  try {
+    const res = await fetch("http://localhost:8000/config", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+
+    if (res.ok) {
+      alert("✅ API Keys saved successfully!");
+    } else {
+      alert("❌ Failed to save API keys");
+    }
+  } catch (err) {
+    console.error("Config save error:", err);
+    alert("Error saving configuration.");
+  }
+};
+
+
+
+
   </script>
 </body>
 </html>
